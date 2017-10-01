@@ -3,6 +3,8 @@ import java.awt.Rectangle;
 import java.util.ArrayList;
 
 public class Cell extends Rectangle {
+	private static final long serialVersionUID = -5585811967385653488L;
+	
 	public Cell(int x, int y, int width, int height, ArrayList<Point> neighbours) {
 		super(x, y, width, height);
 		this.x = x / width;
