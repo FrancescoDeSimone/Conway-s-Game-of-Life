@@ -11,13 +11,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Random;
 
 import javax.swing.JComponent;
 
 public class Grid extends JComponent {
+	private static final long serialVersionUID = 3718432610344631189L;
+
 	public Grid(int widthTable, int heightTable, int x, int y) {
 		this.x = this.xZoom = x;
 		this.y = this.yZoom = y;
@@ -60,7 +61,7 @@ public class Grid extends JComponent {
 		Graphics2D g2 = (Graphics2D) g;
 		for (int i = 0; i < xZoom; i++)
 			for (int j = 0; j < yZoom; j++) {
-				if (cells[i + (x - xZoom) / 2][j + (y - yZoom) / 2].isStatus()) {
+				if (cells[i + (x - xZoom + moveX) / 2][j + (y - yZoom + moveY) / 2].isStatus()) {
 					g2.setColor(Color.green);
 					g2.fill(cells[i][j]);
 				} else {
@@ -125,8 +126,8 @@ public class Grid extends JComponent {
 		@Override
 		public void mouseClicked(MouseEvent arg0) {
 			int i, j;
-			i = (arg0.getX() / widthCells) + (x - xZoom) / 2;
-			j = (arg0.getY() / heightCells) + (y - yZoom) / 2;
+			i = (arg0.getX() / widthCells) + (x - xZoom + moveX) / 2;
+			j = (arg0.getY() / heightCells) + (y - yZoom + moveY) / 2;
 			if (i < x && j < y)
 				cells[i][j].changeCell();
 			repaint();
@@ -164,6 +165,7 @@ public class Grid extends JComponent {
 	public void zoom(int newX, int newY) {
 		xZoom = newX;
 		yZoom = newY;
+		moveX=moveY=0;
 		widthCells = widthTable / newX;
 		heightCells = heightTable / newY;
 		for (int i = 0; i < x; i++)
@@ -171,8 +173,38 @@ public class Grid extends JComponent {
 				cells[i][j].changeDimension(widthCells, heightCells);
 		repaint();
 	}
+	
+	public static final short UP = 0, DOWN = 1, LEFT = 2, RIGHT = 3;
 
+	public void move(short directions) {
+		boolean isMoving = true;
+		switch (directions) {
+		case UP:
+			if ((y - yZoom + moveY)/2 > 0)
+				moveY--;
+			break;
+		case DOWN:
+			if ((y - yZoom + moveY)/2 < y-yZoom)
+				moveY++;
+			break;
+		case LEFT:
+			if ((x - xZoom + moveX)/2 > 0)
+				moveX--;
+			break;
+		case RIGHT:
+			if ((x - xZoom + moveX)/2 < x-xZoom){
+				moveX++;
+			}
+			break;
+		default:
+			isMoving = false;
+			break;
+		}
+		if (isMoving)
+			repaint();
+	}
+	
 	Cell[][] cells;
-	private int widthCells, heightCells, widthTable, heightTable, x, y, xZoom, yZoom;
+	private int widthCells, heightCells, widthTable, heightTable, x, y, xZoom, yZoom, moveX, moveY;
 	private boolean toggleGriglia = true;
 }

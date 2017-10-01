@@ -1,10 +1,12 @@
 import java.awt.BorderLayout;
 import java.awt.HeadlessException;
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Timer;
 import java.util.TimerTask;
 import javax.swing.JButton;
@@ -19,9 +21,10 @@ import javax.swing.JSlider;
 import javax.swing.JToggleButton;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import javax.swing.plaf.metal.MetalIconFactory.FolderIcon16;
 
 public class Gol extends JFrame {
+	private static final long serialVersionUID = -6496802416042228439L;
+	
 	public Gol(int x, int y) {
 		super("Conway's Game Of Life");
 		this.c = y;
@@ -100,8 +103,18 @@ public class Gol extends JFrame {
 					}
 				}
 			});
+			
+			JMenuItem close = new JMenuItem("Exit");
+			close.addActionListener(new ActionListener() {		
+				@Override
+				public void actionPerformed(ActionEvent e) {
+					System.exit(0);
+				}
+			});
+			
 			file.add(carica);
 			file.add(save);
+			file.add(close);
 			menuBar.add(file);
 			this.setJMenuBar(menuBar);
 		}
@@ -110,6 +123,9 @@ public class Gol extends JFrame {
 		CONTROLpanel.add(offset);
 		CONTROLpanel.add(numCells);
 		offset.addChangeListener(new OffsetModifierMouse());
+				
+		
+		KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new moveGrid());
 	}
 
 	private class CaricaPattern implements ActionListener {
@@ -186,6 +202,28 @@ public class Gol extends JFrame {
 		}
 
 	}
+	
+	private class moveGrid implements KeyEventDispatcher{
+
+		@Override
+	      public boolean dispatchKeyEvent(KeyEvent e) {
+			switch (e.getKeyChar()) {
+			case 'w':
+				cells.move(Grid.UP);
+				break;
+			case 'a':
+				cells.move(Grid.LEFT);
+				break;
+			case 's':
+				cells.move(Grid.DOWN);
+				break;
+			case 'd':
+				cells.move(Grid.RIGHT);
+				break;
+			}
+			return false;
+		}
+	}
 
 	private int r, c;
 	private Grid cells;
@@ -193,7 +231,7 @@ public class Gol extends JFrame {
 	private JButton buttons;
 	private JToggleButton toggleGrid;
 	private JPanel CONTROLpanel, GOLpanel;
-	private JSlider velocity = new JSlider(125, 1000);
+	private JSlider velocity = new JSlider(0, 1000);
 	private JSlider offset = new JSlider(1, 8, 1);
 	private JLabel numCells = new JLabel();
 }
