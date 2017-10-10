@@ -20,8 +20,8 @@ public class Grid extends JComponent {
 	private static final long serialVersionUID = 3718432610344631189L;
 
 	public Grid(int widthTable, int heightTable, int x, int y) {
-		this.x = this.xZoom = x;
-		this.y = this.yZoom = y;
+		Grid.x = this.xZoom = x;
+		Grid.y = this.yZoom = y;
 		cells = new Cell[x][y];
 		this.widthTable = widthTable;
 		this.heightTable = heightTable;
@@ -29,28 +29,58 @@ public class Grid extends JComponent {
 		widthCells = widthTable / x;
 		heightCells = heightTable / y;
 		for (int i = 0; i < x; i++)
-			for (int j = 0; j < y; j++){
-				ArrayList<Point> neighbour = new ArrayList<>();
-				if ((i + 1) < x)
-					neighbour.add(new Point(i + 1,j));
-				if ((i - 1) >= 0)
-					neighbour.add(new Point(i - 1,j));
-				if ((j + 1) < y)
-					neighbour.add(new Point(i,j + 1));
-				if ((j - 1) >= 0)
-					neighbour.add(new Point(i,j - 1));
-				if ((i + 1) < x && (j + 1) < y)
-					neighbour.add(new Point(i + 1,j + 1));
-				if ((i + 1) < x && (j - 1) >= 0)
-					neighbour.add(new Point(i +1,j - 1));
-				if ((i - 1) >= 0 && (j + 1) < y)
-					neighbour.add(new Point(i - 1,j + 1));
-				if ((i - 1) >= 0 && (j - 1) >= 0)
-					neighbour.add(new Point(i - 1,j - 1));
-				
-				cells[i][j] = new Cell(widthCells * i, heightCells * j, widthCells, heightCells, neighbour);
-			}
+			for (int j = 0; j < y; j++)			
+				cells[i][j] = new Cell(widthCells * i, heightCells * j, widthCells, heightCells);
+
+		int ncore = Runtime.getRuntime().availableProcessors();		
+		int start = 0;
+		int stop = x/ncore;	
+		ThreadNeibours[] parallelNeibours = new ThreadNeibours[ncore];
+		for(int i=0;i<ncore;i++){
+			parallelNeibours[i] = new ThreadNeibours(cells, start, stop);
+			start=stop;
+			stop = x/ncore + stop;
+			parallelNeibours[i].start();
+		}
 	}
+
+	private class ThreadNeibours extends Thread{
+		
+		public ThreadNeibours(Cell[][] cells,int start, int stop){
+			this.cellPart = cells;
+			this.start = start;
+			this.stop = stop;
+		}
+
+		@Override
+		public void run(){
+			for(int i=start;i<stop;i++)
+				for(int j=0;j<y;j++){
+					ArrayList<Cell> neighbour = new ArrayList<>();
+					if ((i + 1) < x)
+						neighbour.add(cells[i+1][j]);
+					if ((i - 1) >= 0)
+						neighbour.add(cells[i-1][j]);
+					if ((j + 1) < y)
+						neighbour.add(cells[i][j+1]);
+					if ((j - 1) >= 0)
+						neighbour.add(cells[i][j-1]);
+					if ((i + 1) < x && (j + 1) < y)
+						neighbour.add(cells[i+1][j+1]);
+					if ((i + 1) < x && (j - 1) >= 0)
+						neighbour.add(cells[i+1][j-1]);
+					if ((i - 1) >= 0 && (j + 1) < y)
+						neighbour.add(cells[i-1][j+1]);
+					if ((i - 1) >= 0 && (j - 1) >= 0)
+						neighbour.add(cells[i-1][j-1]);
+					
+					cells[i][j].addNeibours(neighbour);
+			}
+		}
+
+		private Cell[][] cellPart=null;
+		private int start,stop;
+	} 
 
 	public Grid(Dimension d, int x, int y) {
 		this((int) d.getWidth(), (int) d.getHeight(), x, y);
@@ -75,12 +105,36 @@ public class Grid extends JComponent {
 			}
 	}
 
-	public void randomCells() {
+	private class ThreadRandom extends Thread{
+		public ThreadRandom(Cell[][] cells, int  start, int stop){
+			this.cells = cells;
+			this.start = start;
+			this.stop = stop;
+		}
+		@Override
+		public void run(){
 		Random rand = new Random();
-		for (int i = 0; i < x; i++)
+		for (int i = start; i < stop; i++)
 			for (int j = 0; j < y; j++)
 				if (rand.nextBoolean())
 					cells[i][j].changeCell();
+		}
+		private Cell[][] cells;
+		private int start,stop; 
+	}
+
+	public void randomCells() {
+		int ncore = Runtime.getRuntime().availableProcessors();		
+		int start = 0;
+		int stop = x/ncore;	
+		ThreadRandom[] parallelRandom = new ThreadRandom[ncore];
+		for(int i=0;i<ncore;i++){
+			parallelRandom[i] = new ThreadRandom(cells, start, stop);
+			start=stop;
+			stop = x/ncore + stop;
+			parallelRandom[i].start();
+		}
+
 		repaint();
 	}
 
@@ -134,31 +188,70 @@ public class Grid extends JComponent {
 		}
 	}
 
+	private static class ThreadGol extends Thread{
+		public ThreadGol(Cell[][] cells, int start, int stop){
+			this.start = start;
+			this.stop = stop;
+			this.cells = cells;
+		}
+
+		public boolean[][] getTableGOL(){
+			return newCells;
+		}
+
+		@Override
+		public void run(){
+			for(int i=start;i<stop;i++)
+				for(int j=0;j<y;j++){
+					int cont=0;
+					for(Cell cell:cells[i][j].getNeighbours())
+						if(cell.isStatus())
+							cont++;
+					
+						if(cont == 2)
+							newCells[i][j] = cells[i][j].isStatus();
+						else if(cont == 3)
+							newCells[i][j] = true;
+						else
+							newCells[i][j] = false;
+				}		
+		}
+		
+		private int start,stop;
+		private Cell[][] cells;
+		private static boolean[][] newCells = new boolean[x][y]; 
+	}
+
 	public void GOLplay() {
 		int r = x;
 		int c = y;
-		boolean[][] tmpcelle = new boolean[r][c];
-		for (int i = 0; i < r; i++)	
-			for (int j = 0; j < c; j++) {
-				int cont = 0;
-				
-				for(Point cellNeighboursPosition:cells[i][j].getNeighboursPoint())
-					if(cells[cellNeighboursPosition.x][cellNeighboursPosition.y].isStatus())
-						cont++;
-				
-					if (cont == 2)
-						tmpcelle[i][j] = cells[i][j].isStatus();
-					else if (cont == 3)
-						tmpcelle[i][j] = true;
-					else
-						tmpcelle[i][j] = false;
-			}
+		boolean[][] tmpcelle = null;
+		int numbCore = Runtime.getRuntime().availableProcessors();
+		ThreadGol[] parallelGol = new ThreadGol[numbCore];
+		
+		int start = 0;
+		int stop = x/numbCore;
+		for (int i = 0; i < numbCore; i++){
+			parallelGol[i] = new ThreadGol(cells, start,stop);
+			start = stop;
+			stop = x/numbCore + stop;
+			parallelGol[i].start();
+		}
 
+		for(ThreadGol t:parallelGol){
+			try {
+				t.join();
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		tmpcelle = parallelGol[numbCore-1].getTableGOL();
 		for (int i = 0; i < r; i++)	
 			for (int j = 0; j < c; j++) {
 				if(cells[i][j].isStatus() != tmpcelle[i][j])
 					cells[i][j].changeCell();
 			}
+
 		repaint();
 	}
 	
@@ -204,7 +297,8 @@ public class Grid extends JComponent {
 			repaint();
 	}
 	
-	Cell[][] cells;
-	private int widthCells, heightCells, widthTable, heightTable, x, y, xZoom, yZoom, moveX, moveY;
+	private Cell[][] cells;
+	private int widthCells, heightCells, widthTable, heightTable, xZoom, yZoom, moveX, moveY;
+	private static int x,y;
 	private boolean toggleGriglia = true;
 }
