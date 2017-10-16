@@ -42,6 +42,8 @@ public class Grid extends JComponent {
 			stop = x/ncore + stop;
 			parallelNeibours[i].start();
 		}
+		for(ThreadNeibours t:parallelNeibours)
+			try{t.join();}catch(InterruptedException e){e.printStackTrace();}
 	}
 
 	private class ThreadNeibours extends Thread{
@@ -134,6 +136,8 @@ public class Grid extends JComponent {
 			stop = x/ncore + stop;
 			parallelRandom[i].start();
 		}
+		for(ThreadRandom t:parallelRandom)
+			try{t.join();}catch(InterruptedException e){e.printStackTrace();}
 
 		repaint();
 	}
